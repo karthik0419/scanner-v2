@@ -65,6 +65,13 @@ def _save(df, tf_label, symbol, res, bars, mav):
     if len(df) < 10:
         return
 
+    # Clip extreme wick outliers (>4x IQR from median) to avoid scale distortion
+    import numpy as np
+    for col in ("High", "Low"):
+        q1, q3 = df[col].quantile(0.05), df[col].quantile(0.95)
+        iqr = q3 - q1
+        df[col] = df[col].clip(q1 - 4*iqr, q3 + 4*iqr)
+
     # Build hlines + colours
     hline_vals, hline_cols, hline_styles, hline_widths = [], [], [], []
     for key, _, col, lw, ls in LEVELS:
@@ -82,11 +89,19 @@ def _save(df, tf_label, symbol, res, bars, mav):
         linewidths=hline_widths,
     )
 
+    # Set Y-axis range to include all levels with 10% padding
+    all_levels = [v for v in [res.get(k,0) for k in ("stop_loss","cmp","breakout","target_1","target_2")] if v > 0]
+    price_min = min(df["Low"].min(), min(all_levels) if all_levels else df["Low"].min())
+    price_max = max(df["High"].max(), max(all_levels) if all_levels else df["High"].max())
+    padding   = (price_max - price_min) * 0.08
+    ylim      = (price_min - padding, price_max + padding)
+
     fig, axes = mpf.plot(
         df, type="candle", style=STYLE,
         volume=True, mav=mav,
         hlines=hlines,
         figsize=(16, 9),
+        ylim=ylim,
         returnfig=True,
         tight_layout=True,
     )
@@ -105,7 +120,8 @@ def _save(df, tf_label, symbol, res, bars, mav):
 
     fig.suptitle(
         f"{symbol}  [{tf_label}]   {res.get('pattern','')}   ({res.get('status','')})",
-        fontsize=14, fontweight="bold", color="#E0E0E0", y=0.98
+        fontsize=13, fontweight="bold", color="#E0E0E0", y=0.98,
+        wrap=True,
     )
 
     # ── Right-side labels on each level
