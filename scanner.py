@@ -31,6 +31,12 @@ from data.loader import _fetch_nse, _resample_weekly
 # Tuned detectors (v2)
 from patterns.cup_handle         import detect_cup_handle, detect_cup_handle_weekly
 from patterns.cup_handle_monthly import detect_cup_handle_monthly, resample_monthly
+import sys as _sys; _sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scanner'))
+try:
+    from utils.sector_rotation import get_sector_bonus, print_sector_heatmap
+    _SECTOR_OK = True
+except Exception:
+    _SECTOR_OK = False
 from patterns.double_bottom      import detect_double_bottom
 from patterns.wedge              import detect_descending_wedge
 from patterns.breakout           import detect_breakout
@@ -191,6 +197,12 @@ def main():
     else:
         print(f"  Universe: {len(symbols)} stocks")
 
+    if _SECTOR_OK:
+        try:
+            print_sector_heatmap()
+        except Exception:
+            pass
+
     print(f"\n[2/4] Pre-fetching price data...")
     price_cache = _fetch_parallel(symbols, args.workers)
 
@@ -210,21 +222,33 @@ def main():
             cmp  = result.get("cmp", 0)
             t1   = result.get("target_1", 0)
             stop = result.get("stop_loss", 0)
+            # Sector rotation — only on stocks that passed pattern filter
+            if _SECTOR_OK:
+                try:
+                    sector_name, sector_signal, sector_bonus = get_sector_bonus(sym)
+                    score = round(min(score + (sector_bonus / 155 * 100), 100), 1)
+                except Exception:
+                    sector_name, sector_signal = "Unknown", "Unknown"
+            else:
+                sector_name, sector_signal = "Unknown", "Unknown"
+
             row = {
-                "symbol":    sym,
-                "pattern":   result.get("pattern"),
-                "status":    result.get("status"),
-                "cmp":       round(cmp, 2),
-                "breakout":  round(result.get("breakout", 0), 2),
-                "stop_loss": round(stop, 2),
-                "target_1":  round(t1, 2),
-                "target_2":  round(result.get("target_2", 0), 2),
-                "upside_%":  round((t1 - cmp) / cmp * 100, 2) if cmp else 0,
-                "risk_%":    round((cmp - stop) / cmp * 100, 2) if cmp else 0,
-                "rr":        rr,
-                "volume":    result.get("volume", False),
-                "neckline":  result.get("neckline_kind", ""),
-                "score":     score,
+                "symbol":         sym,
+                "pattern":        result.get("pattern"),
+                "status":         result.get("status"),
+                "cmp":            round(cmp, 2),
+                "breakout":       round(result.get("breakout", 0), 2),
+                "stop_loss":      round(stop, 2),
+                "target_1":       round(t1, 2),
+                "target_2":       round(result.get("target_2", 0), 2),
+                "upside_%":       round((t1 - cmp) / cmp * 100, 2) if cmp else 0,
+                "risk_%":         round((cmp - stop) / cmp * 100, 2) if cmp else 0,
+                "rr":             rr,
+                "volume":         result.get("volume", False),
+                "neckline":       result.get("neckline_kind", ""),
+                "sector":         sector_name,
+                "sector_signal":  sector_signal,
+                "score":          score,
             }
             results.append(row)
             print(f"  {sym:<20} FOUND | {result.get('pattern')} | {result.get('status')} | score={score} | rr={rr}")
