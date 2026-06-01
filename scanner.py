@@ -131,7 +131,9 @@ def _score(result):
         "Channel Breakout":              10,
     }
     score += pat_bonus.get(pat, 5)
-    return round(score, 1), round(rr, 2)
+    # Normalise to 0-100 (max theoretical ~155)
+    normalised = round(min(score / 155 * 100, 100), 1)
+    return normalised, round(rr, 2)
 
 
 def _fetch_parallel(symbols, workers=MAX_WORKERS):
