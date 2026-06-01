@@ -139,20 +139,30 @@ def _score(result):
 def _fetch_parallel(symbols, workers=MAX_WORKERS):
     print(f"  Pre-fetching price data ({workers} workers)...")
     results = {}
-    with ThreadPoolExecutor(max_workers=workers) as ex:
-        futures = {ex.submit(_fetch_nse, s.replace(".NS",""), 730): s for s in symbols}
-        done = 0
-        for f in as_completed(futures, timeout=600):
-            done += 1
-            sym = futures[f]
+    total = len(symbols)
+    done = 0
+    # Process in batches of 300 to avoid hanging on a single stuck worker
+    BATCH = 300
+    for i in range(0, total, BATCH):
+        batch = symbols[i:i+BATCH]
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = {ex.submit(_fetch_nse, s.replace(".NS",""), 730): s for s in batch}
             try:
-                df = f.result(timeout=30)
-                if df is not None and len(df) >= MIN_CANDLES:
-                    results[sym] = df
+                for f in as_completed(futures, timeout=120):
+                    done += 1
+                    sym = futures[f]
+                    try:
+                        df = f.result(timeout=15)
+                        if df is not None and len(df) >= MIN_CANDLES:
+                            results[sym] = df
+                    except Exception:
+                        pass
+                    if done % 100 == 0:
+                        print(f"    {done}/{total} fetched...")
             except Exception:
-                pass
-            if done % 100 == 0:
-                print(f"    {done}/{len(symbols)} fetched...")
+                # Batch timed out — skip remaining in this batch, continue
+                done += len(batch) - len([f for f in futures if f.done()])
+                print(f"    Batch timeout at {done}/{total} — continuing...")
     print(f"  Ready: {len(results)} stocks")
     return results
 

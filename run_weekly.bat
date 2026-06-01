@@ -17,7 +17,7 @@ echo  Run every Saturday. Expected time: 60-90 min.
 echo.
 
 echo [1/3] Running full scan...
-python scanner.py --top 50 --min-score 50 --workers 4
+python scanner.py --top 50 --min-score 50 --workers 8
 if errorlevel 1 (
     echo ERROR: scanner.py failed.
     pause
