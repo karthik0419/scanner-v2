@@ -88,11 +88,12 @@ def main():
     args = parser.parse_args()
 
     env = load_env()
-    token   = env.get("TELEGRAM_BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = env.get("TELEGRAM_CHAT_ID")   or os.environ.get("TELEGRAM_CHAT_ID")
+    token   = env.get("TELEGRAM_BOT_TOKEN") or env.get("TELEGRAM_TOKEN") or \
+              os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
+    chat_id = env.get("TELEGRAM_CHAT_ID") or os.environ.get("TELEGRAM_CHAT_ID")
 
     if not token or not chat_id:
-        print("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in .env")
+        print("Missing TELEGRAM_TOKEN or TELEGRAM_CHAT_ID in .env")
         sys.exit(1)
 
     # Find latest CSV
