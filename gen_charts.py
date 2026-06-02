@@ -60,10 +60,12 @@ STYLE = mpf.make_mpf_style(
 
 
 def _save(df, tf_label, symbol, res, bars, mav):
+    orig_len = len(df)  # total bars before slicing — needed for cup/handle index adjustment
     df = df.tail(bars).copy()
     df.index.name = "Date"
     if len(df) < 10:
         return
+    bars = len(df)  # actual bars after tail()
 
     # Clip extreme wick outliers (>4x IQR from median) to avoid scale distortion
     import numpy as np
@@ -107,6 +109,37 @@ def _save(df, tf_label, symbol, res, bars, mav):
     )
 
     ax = axes[0]
+
+    # ── Cup & Handle shading
+    total_bars = len(df)
+    cup_start  = res.get("cup_start_idx")
+    cup_end    = res.get("cup_end_idx")
+    handle_start = res.get("handle_start_idx")
+    handle_end   = res.get("handle_end_idx")
+
+    if cup_start is not None and "Cup" in res.get("pattern",""):
+        # Adjust indices relative to the tail window used for the chart
+        offset = orig_len - bars
+
+        # Cup region — blue tint
+        cs = max(cup_start - offset, 0)
+        ce = max(cup_end   - offset, 0)
+        if ce > cs:
+            ax.axvspan(cs, ce, alpha=0.10, color="#2196F3", zorder=0)
+            ax.text((cs + ce) / 2, ax.get_ylim()[1] * 0.98, "CUP",
+                    ha="center", va="top", fontsize=8, color="#2196F3",
+                    fontweight="bold",
+                    bbox=dict(boxstyle="round,pad=0.2", fc="#0D1117", ec="#2196F3", alpha=0.8))
+
+        # Handle region — orange tint
+        hs = max(handle_start - offset, 0)
+        he = min(handle_end   - offset, bars - 1)
+        if he > hs:
+            ax.axvspan(hs, he, alpha=0.15, color="#FF9800", zorder=0)
+            ax.text((hs + he) / 2, ax.get_ylim()[1] * 0.98, "HANDLE",
+                    ha="center", va="top", fontsize=8, color="#FF9800",
+                    fontweight="bold",
+                    bbox=dict(boxstyle="round,pad=0.2", fc="#0D1117", ec="#FF9800", alpha=0.8))
 
     # ── Title
     t1   = res.get("target_1", 0)
