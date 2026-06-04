@@ -208,6 +208,7 @@ def main():
 
     print(f"\n[3/4] Scanning {len(price_cache)} stocks...\n")
     results = []
+    all_results = []  # extended bench — all pattern stocks below min_score
     for sym, df in price_cache.items():
         try:
             df_weekly = _resample_weekly(df)
@@ -216,8 +217,9 @@ def main():
                 continue
             result = _add_targets(result)
             score, rr = _score(result)
-            if rr <= 0 or score < args.min_score:
+            if rr <= 0:
                 continue
+            below_cutoff = score < args.min_score
 
             cmp  = result.get("cmp", 0)
             t1   = result.get("target_1", 0)
@@ -250,7 +252,10 @@ def main():
                 "sector_signal":  sector_signal,
                 "score":          score,
             }
-            results.append(row)
+            if below_cutoff:
+                all_results.append(row)
+            else:
+                results.append(row)
             print(f"  {sym:<20} FOUND | {result.get('pattern')} | {result.get('status')} | score={score} | rr={rr}")
         except Exception:
             continue
@@ -263,6 +268,13 @@ def main():
     df_out   = pd.DataFrame(results).sort_values("score", ascending=False).head(args.top)
     out_path = os.path.join(RESULTS_DIR, f"v2_{date.today()}.csv")
     df_out.to_csv(out_path, index=False)
+
+    # Extended bench — all pattern stocks below cutoff
+    if all_results:
+        df_all = pd.DataFrame(results + all_results).sort_values("score", ascending=False)
+        all_path = os.path.join(RESULTS_DIR, f"v2_{date.today()}_all.csv")
+        df_all.to_csv(all_path, index=False)
+        print(f"  Extended list  : {all_path}  ({len(df_all)} stocks)")
 
     print(f"\n{'='*65}")
     print(f"  SCAN COMPLETE — {date.today()}")
