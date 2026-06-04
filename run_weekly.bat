@@ -33,8 +33,7 @@ if errorlevel 1 (
 
 echo.
 echo [3/3] Sending Telegram notification (top 15)...
-for /f "tokens=*" %%f in ('python -c "import glob; files=sorted(glob.glob('results/v2_*.csv'),reverse=True); print(files[0] if files else '')"') do set TELE_CSV=%%f
-python -X utf8 telegram_notify.py --csv %TELE_CSV% --top 15
+python -X utf8 telegram_notify.py --top 15
 if errorlevel 1 (
     echo WARNING: Telegram notification failed. Results still saved.
 )

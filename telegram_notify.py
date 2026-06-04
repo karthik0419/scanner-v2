@@ -62,16 +62,28 @@ def format_message(df, top):
         cmp   = row["cmp"]
         entry = row["breakout"]
         stop  = row["stop_loss"]
-        tgt   = row["target"]
+        tgt   = row.get("target_1", row.get("target", 0))
         up    = row["upside_%"]
 
-        lines += [
+        sector = str(row.get("sector",""))
+        signal = str(row.get("sector_signal",""))
+        neckline = str(row.get("neckline",""))
+        sec_icon = "🔥" if signal=="BOOM" else "↑" if signal=="RISING" else "↓" if signal=="COOLING" else "🔴" if signal=="WEAK" else ""
+        sec_line = f"🏭 {sector} {sec_icon} {signal}" if sector and sector not in ("","Unknown","nan") else ""
+        neck_line = f"📐 Neckline: {neckline}" if neckline and neckline not in ("","nan") else ""
+
+        msg_lines = [
             "━━━━━━━━━━━━━━━━━━━",
             f"{medal} <b>{sym}</b> | Score: {score} | {pat}",
+        ]
+        if sec_line: msg_lines.append(sec_line)
+        if neck_line: msg_lines.append(neck_line)
+        msg_lines += [
             f"💰 CMP: ₹{cmp}  |  Entry: ₹{entry}",
-            f"🛑 Stop: ₹{stop}  |  🎯 Target: ₹{tgt}",
+            f"🛑 Stop: ₹{stop}  |  🎯 T1: ₹{tgt}",
             f"📈 Upside: {up}%  |  RR: {rr}x",
         ]
+        lines += msg_lines
 
     lines += [
         "━━━━━━━━━━━━━━━━━━━",
@@ -101,7 +113,7 @@ def main():
         csv_path = args.csv
     else:
         results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
-        files = sorted(glob.glob(os.path.join(results_dir, "weekly_*.csv")))
+        files = sorted([f for f in glob.glob(os.path.join(results_dir, "v2_*.csv")) if "_all" not in f])
         if not files:
             print("No results CSV found. Run scanner.py first.")
             sys.exit(1)
