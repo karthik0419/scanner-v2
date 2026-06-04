@@ -26,18 +26,7 @@ if errorlevel 1 (
 
 echo.
 echo [2/3] Generating charts (Daily + Weekly + Monthly)...
-for /f "tokens=*" %%f in ('python -c "import glob; files=sorted(glob.glob('results/v2_*.csv'),reverse=True); print(files[0] if files else '')"') do set CHART_CSV=%%f
-python -X utf8 -c "
-import csv, sys, os
-sys.path.insert(0,'.')
-import gen_charts
-rows = list(csv.DictReader(open(r'%CHART_CSV%', encoding='utf-8')))
-gen_charts.STOCKS = [r['symbol'].replace('.NS','') for r in rows if r.get('symbol')]
-print(f'Generating charts for {len(gen_charts.STOCKS)} stocks')
-for s in gen_charts.STOCKS:
-    gen_charts.plot(s)
-print('Charts done.')
-"
+python -X utf8 gen_charts_latest.py
 if errorlevel 1 (
     echo WARNING: Chart generation failed. Scan results still saved.
 )
